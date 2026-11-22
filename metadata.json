@@ -1,0 +1,6 @@
+{
+  "name": "Telesports Academy Sports Management",
+  "description": "Professional Sports Academy, Athlete Management, Training Programs, Tournament Operations, and AI Coaching Platform.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
