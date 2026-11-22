@@ -7,10 +7,17 @@ import RichTextRenderer from './RichTextRenderer';
 import RichTextEditor from './RichTextEditor';
 import { StringListEditor, ExtraFieldsEditor } from './ExtraFieldsEditor';
 
+interface ActionResult {
+  ok: boolean;
+  error?: string;
+}
+
 interface MerchandiseTabProps {
   siteContent: SiteContent;
   merchandise: MerchandiseItem[];
-  setMerchandise: (items: MerchandiseItem[]) => void;
+  onCreateMerchandise: (item: Omit<MerchandiseItem, 'id'>) => Promise<ActionResult>;
+  onUpdateMerchandise: (id: string, item: Omit<MerchandiseItem, 'id'>) => Promise<ActionResult>;
+  onDeleteMerchandise: (id: string) => Promise<ActionResult>;
   isAdmin: boolean;
   onOpenCms: () => void;
   onAddNotification: (
@@ -26,7 +33,9 @@ interface MerchandiseTabProps {
 export default function MerchandiseTab({
   siteContent,
   merchandise,
-  setMerchandise,
+  onCreateMerchandise,
+  onUpdateMerchandise,
+  onDeleteMerchandise,
   isAdmin,
   onOpenCms,
   onAddNotification,
@@ -39,7 +48,10 @@ export default function MerchandiseTab({
   const [lastAddedItem, setLastAddedItem] = useState<MerchandiseItem | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const btnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const uploadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [successMsg, setSuccessMsg] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [isSavingItem, setIsSavingItem] = useState(false);
   const [checkoutModal, setCheckoutModal] = useState(false);
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
   const [buyerName, setBuyerName] = useState('');
@@ -49,6 +61,7 @@ export default function MerchandiseTab({
     return () => {
       if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
       if (btnTimerRef.current) clearTimeout(btnTimerRef.current);
+      if (uploadTimerRef.current) clearTimeout(uploadTimerRef.current);
     };
   }, []);
 
@@ -83,6 +96,7 @@ export default function MerchandiseTab({
     setExtraPhotos([]);
     setImage('https://images.unsplash.com/photo-1576267423445-b2e0074d68a4?auto=format&fit=crop&q=80&w=500');
     setDescription('');
+    setFormError(null);
     setSuccessMsg(false);
     setShowUploadModal(true);
   };
@@ -99,67 +113,90 @@ export default function MerchandiseTab({
     setExtraPhotos(item.extraPhotos ? [...item.extraPhotos] : []);
     setImage(item.image);
     setDescription(item.description);
+    setFormError(null);
     setSuccessMsg(false);
     setShowUploadModal(true);
   };
 
-  const handleSaveItem = (e: React.FormEvent) => {
+  const handleSaveItem = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !description.trim()) return;
+    if (isSavingItem) return;
+
+    if (!name.trim()) {
+      setFormError('Please enter an item title.');
+      return;
+    }
+    if (category === '__custom__' && !customCategory.trim()) {
+      setFormError('Please enter a custom category name.');
+      return;
+    }
+    const numericPrice = Number(price);
+    if (!Number.isFinite(numericPrice) || numericPrice < 0) {
+      setFormError('Please enter a valid price in Ksh.');
+      return;
+    }
+    if (!image.trim()) {
+      setFormError('Please upload a product photo or paste an image URL.');
+      return;
+    }
+    if (!description.trim()) {
+      setFormError('Please enter a product description.');
+      return;
+    }
+
+    setFormError(null);
+    setIsSavingItem(true);
+
     const finalCategory = (category === '__custom__' ? customCategory.trim() : category) || 'Apparel';
     const cleanSizes = sizes.map((s) => s.trim()).filter(Boolean);
     const cleanExtraDetails = extraDetails.filter((d) => d.label.trim() && d.value.trim());
     const cleanExtraPhotos = extraPhotos.map((u) => u.trim()).filter(Boolean);
 
-    if (editingId) {
-      setMerchandise(
-        merchandise.map((item) =>
-          item.id === editingId
-            ? {
-                ...item,
-                name: name.trim(),
-                category: finalCategory,
-                price: Number(price),
-                image,
-                description,
-                sizes: cleanSizes.length ? cleanSizes : undefined,
-                inStock,
-                extraDetails: cleanExtraDetails,
-                extraPhotos: cleanExtraPhotos,
-              }
-            : item
-        )
-      );
-      setShowUploadModal(false);
-    } else {
-      const newItem: MerchandiseItem = {
-        id: `merch-${Date.now()}`,
-        name: name.trim(),
-        category: finalCategory,
-        price: Number(price),
-        image,
-        description,
-        sizes: cleanSizes.length ? cleanSizes : undefined,
-        inStock,
-        extraDetails: cleanExtraDetails,
-        extraPhotos: cleanExtraPhotos,
-      };
+    const payload: Omit<MerchandiseItem, 'id'> = {
+      name: name.trim(),
+      category: finalCategory,
+      price: Math.round(numericPrice),
+      image: image.trim(),
+      description: description.trim(),
+      sizes: cleanSizes.length ? cleanSizes : undefined,
+      inStock,
+      extraDetails: cleanExtraDetails,
+      extraPhotos: cleanExtraPhotos,
+    };
 
-      setMerchandise([newItem, ...merchandise]);
-      setSuccessMsg(true);
-      setTimeout(() => {
-        setSuccessMsg(false);
+    try {
+      const result = editingId
+        ? await onUpdateMerchandise(editingId, payload)
+        : await onCreateMerchandise(payload);
+
+      if (!result.ok) {
+        setFormError(result.error || 'Could not save merchandise item. Please try again.');
+        return;
+      }
+
+      if (editingId) {
         setShowUploadModal(false);
-        setName('');
-        setDescription('');
-      }, 1500);
+      } else {
+        setSuccessMsg(true);
+        if (uploadTimerRef.current) clearTimeout(uploadTimerRef.current);
+        uploadTimerRef.current = setTimeout(() => {
+          setSuccessMsg(false);
+          setShowUploadModal(false);
+          setName('');
+          setDescription('');
+        }, 1200);
+      }
+    } finally {
+      setIsSavingItem(false);
     }
   };
 
-  const handleDeleteItem = (id: string) => {
-    setMerchandise(merchandise.filter((item) => item.id !== id));
-    setCart(cart.filter((item) => item.id !== id));
-    if (selectedItem?.id === id) setSelectedItem(null);
+  const handleDeleteItem = async (id: string) => {
+    const result = await onDeleteMerchandise(id);
+    if (result.ok) {
+      setCart((prev) => prev.filter((item) => item.id !== id));
+      if (selectedItem?.id === id) setSelectedItem(null);
+    }
   };
 
   const addToCart = (item: MerchandiseItem) => {
@@ -483,7 +520,7 @@ export default function MerchandiseTab({
                 <p className="text-slate-600 text-sm">Now available in the academy store catalog.</p>
               </div>
             ) : (
-              <form onSubmit={handleSaveItem} className="space-y-4">
+              <form onSubmit={handleSaveItem} noValidate className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Item Title *</label>
                   <input
@@ -491,7 +528,10 @@ export default function MerchandiseTab({
                     required
                     placeholder="e.g. Telesports Training Tracksuit"
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    onChange={(e) => {
+                      setFormError(null);
+                      setName(e.target.value);
+                    }}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-pink-600 shadow-xs"
                   />
                 </div>
@@ -501,7 +541,10 @@ export default function MerchandiseTab({
                     <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Category *</label>
                     <select
                       value={allCategories.includes(category) ? category : '__custom__'}
-                      onChange={(e) => setCategory(e.target.value)}
+                      onChange={(e) => {
+                        setFormError(null);
+                        setCategory(e.target.value);
+                      }}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-pink-600 shadow-xs"
                     >
                       {allCategories.map((cat) => (
@@ -517,7 +560,10 @@ export default function MerchandiseTab({
                         required
                         placeholder="Type new category..."
                         value={customCategory}
-                        onChange={(e) => setCustomCategory(e.target.value)}
+                        onChange={(e) => {
+                          setFormError(null);
+                          setCustomCategory(e.target.value);
+                        }}
                         className="w-full bg-white border border-pink-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 focus:outline-none focus:border-pink-600"
                       />
                     )}
@@ -531,7 +577,10 @@ export default function MerchandiseTab({
                       min="0"
                       required
                       value={price}
-                      onChange={(e) => setPrice(Number(e.target.value))}
+                      onChange={(e) => {
+                        setFormError(null);
+                        setPrice(Number(e.target.value));
+                      }}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-pink-600 shadow-xs"
                     />
                   </div>
@@ -556,9 +605,12 @@ export default function MerchandiseTab({
                 />
 
                 <ImageField
-                  label="Product Photo"
+                  label="Product Photo *"
                   value={image}
-                  onChange={setImage}
+                  onChange={(val) => {
+                    setFormError(null);
+                    setImage(val);
+                  }}
                   required
                 />
 
@@ -567,7 +619,10 @@ export default function MerchandiseTab({
                   rows={3}
                   placeholder="Enter item materials, sizing, and features..."
                   value={description}
-                  onChange={setDescription}
+                  onChange={(val) => {
+                    setFormError(null);
+                    setDescription(val);
+                  }}
                 />
 
                 <ExtraFieldsEditor
@@ -577,7 +632,16 @@ export default function MerchandiseTab({
                   onChangePhotos={setExtraPhotos}
                 />
 
-                <div className="pt-4 flex items-center justify-end space-x-3">
+                {formError && (
+                  <div
+                    role="alert"
+                    className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs font-bold text-red-700"
+                  >
+                    {formError}
+                  </div>
+                )}
+
+                <div className="pt-2 flex items-center justify-end space-x-3">
                   <button
                     type="button"
                     onClick={() => setShowUploadModal(false)}
@@ -587,9 +651,16 @@ export default function MerchandiseTab({
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-pink-600 to-purple-700 text-white font-black text-sm shadow-lg hover:from-pink-500 hover:to-purple-600"
+                    disabled={isSavingItem}
+                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-pink-600 to-purple-700 text-white font-black text-sm shadow-lg hover:from-pink-500 hover:to-purple-600 disabled:opacity-60"
                   >
-                    {editingId ? 'Save Changes' : 'Upload Item'}
+                    {isSavingItem
+                      ? editingId
+                        ? 'Saving...'
+                        : 'Uploading...'
+                      : editingId
+                        ? 'Save Changes'
+                        : 'Upload Item'}
                   </button>
                 </div>
               </form>

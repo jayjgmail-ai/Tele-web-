@@ -12,6 +12,7 @@ dotenv.config();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = path.resolve(__dirname, '.telesports-data');
 const NOTIFS_FILE = path.resolve(DATA_DIR, 'notifications.json');
+const MERCH_FILE = path.resolve(DATA_DIR, 'merchandise.json');
 
 type NotificationCategory = 'purchases' | 'requests' | 'applications';
 
@@ -25,6 +26,19 @@ interface ServerNotification {
   read: boolean;
   targetTab: string;
   amount?: string;
+}
+
+interface ServerMerchandiseItem {
+  id: string;
+  name: string;
+  category: string;
+  price: number;
+  image: string;
+  description: string;
+  sizes?: string[];
+  inStock: boolean;
+  extraDetails?: { label: string; value: string }[];
+  extraPhotos?: string[];
 }
 
 const ALLOWED_CATEGORIES = new Set<NotificationCategory>(['purchases', 'requests', 'applications']);
@@ -49,6 +63,56 @@ const DEFAULT_PIN_SALT = '919b38b0c754d51e026ad7e98a16f141';
 const DEFAULT_PIN_HASH =
   '15180230f3a7439279204c83d3c9fb98004ea68a154388bbc9ec2093c105ef817a6b0be96073d3b4584bec5713ca4122c540f4a00d6ace39832cd7fb6d46c8bb';
 
+const MAX_MERCHANDISE = 200;
+
+const DEFAULT_MERCHANDISE: ServerMerchandiseItem[] = [
+  {
+    id: 'merch-1',
+    name: 'Telesports Elite Pro Home Kit 2026',
+    category: 'Apparel',
+    price: 4500,
+    image:
+      'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&q=80&w=500',
+    description:
+      'Official moisture-wicking home jersey featuring the Telesports Academy crest and vibrant brand accents.',
+    sizes: ['S', 'M', 'L', 'XL'],
+    inStock: true,
+  },
+  {
+    id: 'merch-2',
+    name: 'Telesports Academy Champion Hoodie',
+    category: 'Apparel',
+    price: 3800,
+    image:
+      'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&q=80&w=500',
+    description: 'Heavyweight fleece hoodie designed for pre-match warmups and travel days.',
+    sizes: ['M', 'L', 'XL'],
+    inStock: true,
+  },
+  {
+    id: 'merch-3',
+    name: 'Pro Match Football (FIFA Quality)',
+    category: 'Equipment',
+    price: 6500,
+    image:
+      'https://images.unsplash.com/photo-1614632537455-c9381e8e7162?auto=format&fit=crop&q=80&w=500',
+    description:
+      'Official match ball with thermal-bonded seamless surface for precise flight trajectory.',
+    inStock: true,
+  },
+  {
+    id: 'merch-4',
+    name: 'Titanium Hydro Training Water Bottle',
+    category: 'Accessories',
+    price: 1800,
+    image:
+      'https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&q=80&w=500',
+    description:
+      'Double-wall vacuum insulated stainless steel bottle keeping drinks ice-cold for 24 hours.',
+    inStock: true,
+  },
+];
+
 function ensureSafeDataPath(target: string): boolean {
   return target.startsWith(DATA_DIR + path.sep);
 }
@@ -66,7 +130,21 @@ function loadNotificationsFromDisk(): ServerNotification[] {
   }
 }
 
+function loadMerchandiseFromDisk(): ServerMerchandiseItem[] {
+  try {
+    if (!ensureSafeDataPath(MERCH_FILE) || !fs.existsSync(MERCH_FILE)) {
+      return [...DEFAULT_MERCHANDISE];
+    }
+    const raw = fs.readFileSync(MERCH_FILE, 'utf8');
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [...DEFAULT_MERCHANDISE];
+  } catch {
+    return [...DEFAULT_MERCHANDISE];
+  }
+}
+
 let notificationsStore: ServerNotification[] = loadNotificationsFromDisk();
+let merchandiseStore: ServerMerchandiseItem[] = loadMerchandiseFromDisk();
 
 function persistNotificationsToDisk() {
   try {
@@ -78,6 +156,19 @@ function persistNotificationsToDisk() {
     fs.renameSync(tmpFile, NOTIFS_FILE);
   } catch (err) {
     console.error('Failed to persist notifications:', err);
+  }
+}
+
+function persistMerchandiseToDisk() {
+  try {
+    if (!ensureSafeDataPath(MERCH_FILE)) return;
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    const tmpFile = path.resolve(DATA_DIR, `merchandise.tmp.${process.pid}.json`);
+    if (!ensureSafeDataPath(tmpFile)) return;
+    fs.writeFileSync(tmpFile, JSON.stringify(merchandiseStore, null, 2), 'utf8');
+    fs.renameSync(tmpFile, MERCH_FILE);
+  } catch (err) {
+    console.error('Failed to persist merchandise:', err);
   }
 }
 
@@ -156,8 +247,89 @@ function cleanText(val: unknown, maxLen: number): string {
   return val.replace(/[\r\n]+/g, ' ').trim().slice(0, maxLen);
 }
 
+function cleanMultilineText(val: unknown, maxLen: number): string {
+  if (typeof val !== 'string') return '';
+  return val.replace(/\r\n/g, '\n').trim().slice(0, maxLen);
+}
+
+function cleanImageSource(val: unknown): string {
+  if (typeof val !== 'string') return '';
+  const trimmed = val.trim();
+  if (!trimmed || trimmed.length > 2_000_000) return '';
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (trimmed.startsWith('/') && !trimmed.startsWith('//')) return trimmed;
+  if (/^data:image\/(png|jpeg|jpg|webp|gif);base64,[A-Za-z0-9+/=]+$/i.test(trimmed)) {
+    return trimmed;
+  }
+  return '';
+}
+
+function parseMerchandisePayload(
+  body: Record<string, unknown>,
+  id: string
+): { item?: ServerMerchandiseItem; error?: string } {
+  const name = cleanText(body.name, 200);
+  const category = cleanText(body.category, 80) || 'Apparel';
+  const price = Number(body.price);
+  const image = cleanImageSource(body.image);
+  const description = cleanMultilineText(body.description, 8000);
+  const inStock = Boolean(body.inStock);
+
+  if (!name) return { error: 'Item title is required.' };
+  if (!Number.isFinite(price) || price < 0 || price > 100_000_000) {
+    return { error: 'Please enter a valid price in Ksh.' };
+  }
+  if (!image) {
+    return {
+      error:
+        'Please provide a valid image URL (http/https) or upload a PNG/JPEG/WEBP/GIF photo under 2 MB.',
+    };
+  }
+  if (!description) return { error: 'Item description is required.' };
+
+  const sizes = Array.isArray(body.sizes)
+    ? body.sizes
+        .map((s) => cleanText(s, 40))
+        .filter(Boolean)
+        .slice(0, 30)
+    : undefined;
+
+  const extraDetails = Array.isArray(body.extraDetails)
+    ? body.extraDetails
+        .map((d) => {
+          const rec = d as Record<string, unknown>;
+          return {
+            label: cleanText(rec?.label, 80),
+            value: cleanText(rec?.value, 300),
+          };
+        })
+        .filter((d) => d.label && d.value)
+        .slice(0, 30)
+    : [];
+
+  const extraPhotos = Array.isArray(body.extraPhotos)
+    ? body.extraPhotos.map(cleanImageSource).filter(Boolean).slice(0, 10)
+    : [];
+
+  return {
+    item: {
+      id,
+      name,
+      category,
+      price: Math.round(price),
+      image,
+      description,
+      ...(sizes && sizes.length > 0 ? { sizes } : {}),
+      inStock,
+      extraDetails,
+      extraPhotos,
+    },
+  };
+}
+
 async function startServer() {
   const app = express();
+  app.use('/api/merchandise', express.json({ limit: '4mb' }));
   app.use(express.json({ limit: '64kb' }));
 
   // Prevent Vite dev middleware from serving server-side runtime storage
@@ -245,6 +417,54 @@ async function startServer() {
     notificationsStore = notificationsStore.filter((n) => n.id !== id);
     persistNotificationsToDisk();
     res.json({ ok: true });
+  });
+
+  // Public merchandise catalog read
+  app.get('/api/merchandise', (_req, res) => {
+    res.json({ merchandise: merchandiseStore });
+  });
+
+  // Admin-only merchandise creation, editing & deletion
+  app.post('/api/merchandise', requireAdmin, (req, res) => {
+    if (merchandiseStore.length >= MAX_MERCHANDISE) {
+      return res.status(400).json({ error: 'Maximum merchandise catalog limit reached.' });
+    }
+    const id = `merch-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
+    const { item, error } = parseMerchandisePayload((req.body ?? {}) as Record<string, unknown>, id);
+    if (error || !item) {
+      return res.status(400).json({ error: error || 'Invalid merchandise payload.' });
+    }
+    merchandiseStore = [item, ...merchandiseStore];
+    persistMerchandiseToDisk();
+    return res.status(201).json({ item, merchandise: merchandiseStore });
+  });
+
+  app.put('/api/merchandise/:id', requireAdmin, (req, res) => {
+    const id = req.params.id;
+    if (!SAFE_ID_REGEX.test(id)) {
+      return res.status(400).json({ error: 'Invalid merchandise ID.' });
+    }
+    const exists = merchandiseStore.some((m) => m.id === id);
+    if (!exists) {
+      return res.status(404).json({ error: 'Merchandise item not found.' });
+    }
+    const { item, error } = parseMerchandisePayload((req.body ?? {}) as Record<string, unknown>, id);
+    if (error || !item) {
+      return res.status(400).json({ error: error || 'Invalid merchandise payload.' });
+    }
+    merchandiseStore = merchandiseStore.map((m) => (m.id === id ? item : m));
+    persistMerchandiseToDisk();
+    return res.json({ item, merchandise: merchandiseStore });
+  });
+
+  app.delete('/api/merchandise/:id', requireAdmin, (req, res) => {
+    const id = req.params.id;
+    if (!SAFE_ID_REGEX.test(id)) {
+      return res.status(400).json({ error: 'Invalid merchandise ID.' });
+    }
+    merchandiseStore = merchandiseStore.filter((m) => m.id !== id);
+    persistMerchandiseToDisk();
+    return res.json({ ok: true, merchandise: merchandiseStore });
   });
 
   // Initialize Gemini API client if API key is present

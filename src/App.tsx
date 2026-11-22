@@ -408,6 +408,127 @@ export default function App() {
     }
   }, [isAdmin, adminToken, showNotificationsModal, fetchServerNotifications]);
 
+  const fetchServerMerchandise = useCallback(async () => {
+    try {
+      const res = await fetch('/api/merchandise');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (Array.isArray(data?.merchandise)) {
+        setMerchandise(data.merchandise);
+      }
+    } catch {
+      // Keep cached fallback if network fails temporarily
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchServerMerchandise();
+  }, [fetchServerMerchandise]);
+
+  useEffect(() => {
+    if (currentTab === 'merchandise') {
+      void fetchServerMerchandise();
+    }
+  }, [currentTab, fetchServerMerchandise]);
+
+  const handleCreateMerchandise = useCallback(
+    async (item: Omit<MerchandiseItem, 'id'>): Promise<{ ok: boolean; error?: string }> => {
+      if (!adminToken) {
+        return { ok: false, error: 'Please log in as Admin again to upload merchandise.' };
+      }
+      try {
+        const res = await fetch('/api/merchandise', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${adminToken}`,
+          },
+          body: JSON.stringify(item),
+        });
+        if (res.status === 401) {
+          handleExitAdmin();
+          return { ok: false, error: 'Admin session expired. Please log in again.' };
+        }
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          return { ok: false, error: data?.error || 'Could not upload merchandise item.' };
+        }
+        if (Array.isArray(data?.merchandise)) {
+          setMerchandise(data.merchandise);
+        }
+        return { ok: true };
+      } catch {
+        return { ok: false, error: 'Network error while uploading. Please try again.' };
+      }
+    },
+    [adminToken, handleExitAdmin]
+  );
+
+  const handleUpdateMerchandise = useCallback(
+    async (
+      id: string,
+      item: Omit<MerchandiseItem, 'id'>
+    ): Promise<{ ok: boolean; error?: string }> => {
+      if (!adminToken) {
+        return { ok: false, error: 'Please log in as Admin again to update merchandise.' };
+      }
+      try {
+        const res = await fetch(`/api/merchandise/${encodeURIComponent(id)}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${adminToken}`,
+          },
+          body: JSON.stringify(item),
+        });
+        if (res.status === 401) {
+          handleExitAdmin();
+          return { ok: false, error: 'Admin session expired. Please log in again.' };
+        }
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          return { ok: false, error: data?.error || 'Could not save merchandise changes.' };
+        }
+        if (Array.isArray(data?.merchandise)) {
+          setMerchandise(data.merchandise);
+        }
+        return { ok: true };
+      } catch {
+        return { ok: false, error: 'Network error while saving changes. Please try again.' };
+      }
+    },
+    [adminToken, handleExitAdmin]
+  );
+
+  const handleDeleteMerchandise = useCallback(
+    async (id: string): Promise<{ ok: boolean; error?: string }> => {
+      if (!adminToken) {
+        return { ok: false, error: 'Please log in as Admin again to delete merchandise.' };
+      }
+      try {
+        const res = await fetch(`/api/merchandise/${encodeURIComponent(id)}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${adminToken}` },
+        });
+        if (res.status === 401) {
+          handleExitAdmin();
+          return { ok: false, error: 'Admin session expired. Please log in again.' };
+        }
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          return { ok: false, error: data?.error || 'Could not delete merchandise item.' };
+        }
+        if (Array.isArray(data?.merchandise)) {
+          setMerchandise(data.merchandise);
+        }
+        return { ok: true };
+      } catch {
+        return { ok: false, error: 'Network error while deleting item. Please try again.' };
+      }
+    },
+    [adminToken, handleExitAdmin]
+  );
+
   const handleAddNotification = useCallback(
     (
       category: NotificationCategory,
@@ -630,7 +751,9 @@ export default function App() {
           <MerchandiseTab
             siteContent={siteContent}
             merchandise={merchandise}
-            setMerchandise={setMerchandise}
+            onCreateMerchandise={handleCreateMerchandise}
+            onUpdateMerchandise={handleUpdateMerchandise}
+            onDeleteMerchandise={handleDeleteMerchandise}
             isAdmin={isAdmin}
             onOpenCms={() => setShowCmsModal(true)}
             onAddNotification={handleAddNotification}

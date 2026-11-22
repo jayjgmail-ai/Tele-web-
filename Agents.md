@@ -42,14 +42,14 @@
 
 ## 3. Locked File Manifest
 
-- `server.ts` — Express server + Vite dev middleware + `POST /api/ai-coach` (`@google/genai` >= 2.32.0 using `gemini-4-hydrogen`) + `POST /api/admin/login` & `/api/notifications*` persistent JSON notification store (`.telesports-data/notifications.json`)
-- `src/App.tsx` — Root state, Browser History API (`pushState`/`popstate`/`hashchange`) back/forward page navigation, `localStorage` CMS/data persistence, server-verified Admin authentication, Admin banner, server-synced Categorized Notifications
+- `server.ts` — Express server + Vite dev middleware + `POST /api/ai-coach` (`@google/genai` >= 2.32.0 using `gemini-4-hydrogen`) + `POST /api/admin/login`, `/api/notifications*` (`.telesports-data/notifications.json`), & `/api/merchandise*` (`.telesports-data/merchandise.json`)
+- `src/App.tsx` — Root state, Browser History API (`pushState`/`popstate`/`hashchange`) back/forward page navigation, `localStorage` CMS/data persistence, server-verified Admin authentication, Admin banner, server-synced Categorized Notifications & Merchandise catalog
 - `src/types.ts` — Core TypeScript interfaces (`Partner`, `PartnerCategory`, `Coach`, `Program`, `Announcement`, `AnnouncementCategory`, `NewsArticle`, `CoachApplication`, `ParentSportRequest`, `MerchandiseItem`, `AdminNotification`)
 - `src/data/mockData.ts` — Initial academy data with `Ksh` pricing, partner schools/organizations, and announcements
 - `src/data/siteContent.ts` — Editable page-by-page copy, testimonials, `heroImage`, and default `logoUrl` (`/assets/aistudio/file_000000007aec821083703bd6c537a40b_2f531d18.png`)
 - `src/components/Navbar.tsx` — Balanced brand header + uncropped logo badge in trophy slot + hidden 4-tap Admin trigger on brand header (top-right tiles menu removed)
 - `src/components/Footer.tsx` — Dynamic footer + uncropped logo badge in trophy slot bound to `siteContent.global`
-- `src/components/ImageField.tsx` — Reusable URL + local image upload field
+- `src/components/ImageField.tsx` — Reusable URL + compressed local image upload field (preserves exact aspect ratio)
 - `src/components/AdminCmsModal.tsx` — Full-site page-aware rich text, font, color, navigation, footer, form options, image & custom block editor
 - `src/components/ExtraFieldsEditor.tsx` — Reusable dynamic list editor (`StringListEditor`) and custom key/value + extra photos editor (`ExtraFieldsEditor`)
 - `src/components/PageBuilderPanel.tsx` — Fonts & Colors studio and Insert Topics / Images / Lists / Cards / Callouts / CTAs / Dividers builder
