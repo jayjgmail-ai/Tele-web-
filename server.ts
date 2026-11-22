@@ -172,8 +172,9 @@ function persistMerchandiseToDisk() {
   }
 }
 
-function verifyAdminPin(pin: string): boolean {
-  if (typeof pin !== 'string' || !pin) return false;
+function verifyAdminPin(rawPin: string): boolean {
+  const pin = typeof rawPin === 'string' ? rawPin.trim() : '';
+  if (!pin) return false;
   const envPin = process.env.ADMIN_PIN?.trim();
   if (envPin) {
     const a = crypto.createHash('sha256').update(pin).digest();
@@ -521,13 +522,28 @@ async function startServer() {
     }
   });
 
-  // Vite middleware for frontend development
-  const vite = await createViteServer({
-    server: { middlewareMode: true },
-    appType: 'spa',
+  // Keep unmatched /api routes returning JSON instead of SPA HTML fallback
+  app.use('/api', (_req, res) => {
+    res.status(404).json({ error: 'API endpoint not found.' });
   });
 
-  app.use(vite.middlewares);
+  const distDir = path.resolve(__dirname, 'dist');
+  const distIndex = path.resolve(distDir, 'index.html');
+
+  if (process.env.NODE_ENV === 'production' && fs.existsSync(distIndex)) {
+    app.use(express.static(distDir));
+    app.get('*', (_req, res) => {
+      res.sendFile(distIndex);
+    });
+  } else {
+    // Vite middleware for frontend development
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: 'spa',
+    });
+
+    app.use(vite.middlewares);
+  }
 
   const port = Number(process.env.PORT) || 3000;
   app.listen(port, '0.0.0.0', () => {

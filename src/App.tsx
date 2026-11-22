@@ -578,9 +578,12 @@ export default function App() {
       const res = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin: adminPin }),
+        body: JSON.stringify({ pin: adminPin.trim() }),
       });
-      const data = await res.json().catch(() => ({}));
+      const contentType = res.headers.get('content-type') || '';
+      const data = contentType.includes('application/json')
+        ? await res.json().catch(() => ({}))
+        : {};
       if (res.ok && typeof data?.token === 'string') {
         setAdminToken(data.token);
         setIsAdmin(true);
@@ -589,11 +592,22 @@ export default function App() {
         setPinError(false);
         setShowNotificationsModal(true);
         await fetchServerNotifications(data.token);
+      } else if (res.status === 401) {
+        setPinErrorMessage('Incorrect PIN.');
+        setPinError(true);
+      } else if (res.status === 429) {
+        setPinErrorMessage('Too many login attempts. Please wait a moment.');
+        setPinError(true);
+      } else if (res.status === 404 || res.status === 405 || !contentType.includes('application/json')) {
+        setPinErrorMessage(
+          'Admin login endpoint is not available on this URL yet. Please re-share or redeploy the app.'
+        );
+        setPinError(true);
       } else {
         setPinErrorMessage(
-          res.status === 429
-            ? 'Too many login attempts. Please wait a moment.'
-            : 'Incorrect PIN.'
+          typeof data?.error === 'string' && data.error
+            ? data.error
+            : 'Unable to verify PIN right now. Please try again.'
         );
         setPinError(true);
       }
@@ -907,6 +921,9 @@ export default function App() {
                     type="password"
                     required
                     autoFocus
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
                     placeholder="Enter PIN"
                     value={adminPin}
                     onChange={(e) => {
