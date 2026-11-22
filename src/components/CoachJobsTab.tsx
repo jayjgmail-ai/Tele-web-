@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { CoachApplication, SportType, NotificationCategory } from '../types';
 import { SiteContent } from '../data/siteContent';
-import { Briefcase, CheckCircle2, X, Edit3 } from 'lucide-react';
+import { Briefcase, CheckCircle2, X, Edit3, Check, Plus } from 'lucide-react';
 import RichTextRenderer from './RichTextRenderer';
 
 interface CoachJobsTabProps {
@@ -40,15 +40,44 @@ export default function CoachJobsTab({
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [sport, setSport] = useState<SportType>(sportsList[0] || 'Football');
+  const [selectedSports, setSelectedSports] = useState<SportType[]>(
+    sportsList[0] ? [sportsList[0]] : ['Football']
+  );
+  const [customSportInput, setCustomSportInput] = useState('');
+  const [sportError, setSportError] = useState(false);
   const [experienceYears, setExperienceYears] = useState(5);
   const [certifications, setCertifications] = useState('');
   const [philosophy, setPhilosophy] = useState('');
   const [extraAnswers, setExtraAnswers] = useState<Record<string, string>>({});
 
+  const availableSports = Array.from(new Set([...sportsList, ...selectedSports]));
+
+  const toggleSport = (sp: SportType) => {
+    setSportError(false);
+    setSelectedSports((prev) =>
+      prev.includes(sp) ? prev.filter((item) => item !== sp) : [...prev, sp]
+    );
+  };
+
+  const handleAddCustomSport = () => {
+    const trimmed = customSportInput.trim();
+    if (!trimmed) return;
+    setSportError(false);
+    if (!selectedSports.includes(trimmed)) {
+      setSelectedSports((prev) => [...prev, trimmed]);
+    }
+    setCustomSportInput('');
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!fullName.trim() || !email.trim()) return;
+    if (selectedSports.length === 0) {
+      setSportError(true);
+      return;
+    }
+
+    const sportSummary = selectedSports.join(', ');
 
     const mappedExtras = extraQuestions
       .map((q) => ({ label: q, value: (extraAnswers[q] || '').trim() }))
@@ -59,7 +88,7 @@ export default function CoachJobsTab({
       fullName,
       email,
       phone,
-      sport,
+      sport: sportSummary,
       experienceYears: Number(experienceYears),
       certifications,
       philosophy,
@@ -74,7 +103,7 @@ export default function CoachJobsTab({
     onAddNotification(
       'applications',
       `New Coach Application: ${fullName}`,
-      `${sport} Specialist • ${experienceYears} Years Experience`,
+      `${sportSummary} Specialist • ${experienceYears} Years Experience`,
       `Email: ${email} | Certifications: ${certifications}${extraSummary ? ` | ${extraSummary}` : ''}`,
       'coach-jobs'
     );
@@ -85,6 +114,9 @@ export default function CoachJobsTab({
       setFullName('');
       setEmail('');
       setPhone('');
+      setSelectedSports(sportsList[0] ? [sportsList[0]] : ['Football']);
+      setCustomSportInput('');
+      setSportError(false);
       setCertifications('');
       setPhilosophy('');
       setExtraAnswers({});
@@ -188,7 +220,7 @@ export default function CoachJobsTab({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Phone *</label>
                     <input
@@ -202,21 +234,6 @@ export default function CoachJobsTab({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Sport Specialization *</label>
-                    <select
-                      value={sport}
-                      onChange={(e) => setSport(e.target.value as SportType)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-pink-600 shadow-xs"
-                    >
-                      {sportsList.map((sp) => (
-                        <option key={sp} value={sp}>
-                          {sp}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
                     <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Experience (Years) *</label>
                     <input
                       type="number"
@@ -227,6 +244,77 @@ export default function CoachJobsTab({
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-pink-600 shadow-xs"
                     />
                   </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold text-slate-700 uppercase">
+                      Sport Specialization * (Select all that apply)
+                    </label>
+                    <span className="text-[11px] font-bold text-pink-600">
+                      {selectedSports.length} selected
+                    </span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+                    <div className="flex flex-wrap gap-2">
+                      {availableSports.map((sp) => {
+                        const isSelected = selectedSports.includes(sp);
+                        return (
+                          <button
+                            key={sp}
+                            type="button"
+                            onClick={() => toggleSport(sp)}
+                            aria-pressed={isSelected}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all flex items-center gap-1.5 ${
+                              isSelected
+                                ? 'bg-pink-600 text-white border-pink-600 shadow-xs'
+                                : 'bg-white text-slate-700 border-slate-200 hover:border-pink-300'
+                            }`}
+                          >
+                            <span
+                              className={`w-3.5 h-3.5 rounded flex items-center justify-center border ${
+                                isSelected
+                                  ? 'bg-yellow-400 border-yellow-400 text-slate-950'
+                                  : 'border-slate-300 bg-slate-50'
+                              }`}
+                            >
+                              {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                            </span>
+                            <span>{sp}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="flex gap-2 pt-1">
+                      <input
+                        type="text"
+                        placeholder="Other sport specialization (optional)..."
+                        value={customSportInput}
+                        onChange={(e) => setCustomSportInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddCustomSport();
+                          }
+                        }}
+                        className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-pink-600"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddCustomSport}
+                        className="px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-pink-100 text-slate-800 hover:text-pink-700 font-bold text-xs flex items-center gap-1 shrink-0"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Add
+                      </button>
+                    </div>
+                  </div>
+                  {sportError && (
+                    <p className="text-xs font-semibold text-red-600 mt-1">
+                      Please select at least one sport specialization.
+                    </p>
+                  )}
                 </div>
 
                 <div>
