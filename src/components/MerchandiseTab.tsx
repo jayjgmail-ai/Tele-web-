@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { MerchandiseItem, NotificationCategory, ExtraDetailItem } from '../types';
 import { SiteContent } from '../data/siteContent';
-import { ShoppingBag, Plus, X, CheckCircle2, Tag, Edit3, Trash2 } from 'lucide-react';
+import { ShoppingBag, Plus, X, CheckCircle2, Tag, Edit3, Trash2, Check } from 'lucide-react';
 import ImageField from './ImageField';
 import RichTextRenderer from './RichTextRenderer';
 import RichTextEditor from './RichTextEditor';
@@ -35,11 +35,22 @@ export default function MerchandiseTab({
   const [selectedItem, setSelectedItem] = useState<MerchandiseItem | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [cart, setCart] = useState<MerchandiseItem[]>([]);
+  const [justAddedId, setJustAddedId] = useState<string | null>(null);
+  const [lastAddedItem, setLastAddedItem] = useState<MerchandiseItem | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const btnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [successMsg, setSuccessMsg] = useState(false);
   const [checkoutModal, setCheckoutModal] = useState(false);
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
   const [buyerName, setBuyerName] = useState('');
   const [buyerEmail, setBuyerEmail] = useState('');
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+      if (btnTimerRef.current) clearTimeout(btnTimerRef.current);
+    };
+  }, []);
 
   const [name, setName] = useState('');
   const [category, setCategory] = useState<string>('Apparel');
@@ -152,7 +163,19 @@ export default function MerchandiseTab({
   };
 
   const addToCart = (item: MerchandiseItem) => {
-    setCart([...cart, item]);
+    setCart((prev) => [...prev, item]);
+    setJustAddedId(item.id);
+    setLastAddedItem(item);
+
+    if (btnTimerRef.current) clearTimeout(btnTimerRef.current);
+    btnTimerRef.current = setTimeout(() => {
+      setJustAddedId((curr) => (curr === item.id ? null : curr));
+    }, 1800);
+
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => {
+      setLastAddedItem(null);
+    }, 4500);
   };
 
   const cartTotal = cart.reduce((sum, item) => sum + item.price, 0);
@@ -193,15 +216,21 @@ export default function MerchandiseTab({
       <div className="rounded-3xl bg-pink-50/50 p-8 sm:p-12 border border-pink-200 relative overflow-hidden shadow-xl">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-4 max-w-2xl">
-            <span className="px-3.5 py-1.5 rounded-md bg-pink-600 text-white font-black text-xs uppercase tracking-wider shadow-xs">
-              {m.badge}
-            </span>
-            <h1 className="text-3xl sm:text-5xl font-black text-slate-900 uppercase tracking-tight">
-              <RichTextRenderer text={m.heading} inline />
-            </h1>
-            <div className="text-slate-600 text-base leading-relaxed">
-              <RichTextRenderer text={m.subheading} />
-            </div>
+            {m.badge?.trim() && (
+              <span className="inline-block px-3.5 py-1.5 rounded-md bg-pink-600 text-white font-black text-xs uppercase tracking-wider shadow-xs">
+                {m.badge}
+              </span>
+            )}
+            {m.heading?.trim() && (
+              <h1 className="text-3xl sm:text-5xl font-black text-slate-900 uppercase tracking-tight">
+                <RichTextRenderer text={m.heading} inline />
+              </h1>
+            )}
+            {m.subheading?.trim() && (
+              <div className="text-slate-600 text-base leading-relaxed">
+                <RichTextRenderer text={m.subheading} />
+              </div>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-4">
@@ -239,12 +268,12 @@ export default function MerchandiseTab({
             <div>
               <div
                 onClick={() => setSelectedItem(item)}
-                className="relative h-56 overflow-hidden bg-slate-100 cursor-pointer"
+                className="relative min-h-[8rem] overflow-hidden bg-slate-50 flex items-center justify-center cursor-pointer"
               >
                 <img
                   src={item.image}
                   alt={item.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  className="w-full h-auto block group-hover:scale-105 transition-transform duration-500"
                 />
                 <div className="absolute top-3 left-3 px-3 py-1 rounded-md bg-white/95 backdrop-blur-md text-[10px] font-extrabold text-pink-700 border border-pink-200 uppercase shadow-xs">
                   {item.category}
@@ -285,14 +314,36 @@ export default function MerchandiseTab({
             </div>
 
             <div className="p-5 pt-0 space-y-2">
-              <button
-                onClick={() => addToCart(item)}
-                disabled={!item.inStock}
-                className="w-full py-3 rounded-xl bg-pink-50 hover:bg-pink-600 hover:text-white text-pink-900 font-bold text-xs transition-all flex items-center justify-center gap-2 border border-pink-200 disabled:opacity-50"
-              >
-                <ShoppingBag className="w-3.5 h-3.5" />
-                {m.addToCartText || 'Add To Cart'} - Ksh {item.price.toLocaleString()}
-              </button>
+              {(() => {
+                const qtyInCart = cart.filter((c) => c.id === item.id).length;
+                const isJustAdded = justAddedId === item.id;
+                return (
+                  <button
+                    onClick={() => addToCart(item)}
+                    disabled={!item.inStock}
+                    className={`w-full py-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 border disabled:opacity-50 ${
+                      isJustAdded
+                        ? 'bg-pink-600 text-white border-pink-600 shadow-md shadow-pink-600/20'
+                        : 'bg-pink-50 hover:bg-pink-600 hover:text-white text-pink-900 border-pink-200'
+                    }`}
+                  >
+                    {isJustAdded ? (
+                      <>
+                        <Check className="w-4 h-4 text-yellow-300 stroke-[3]" />
+                        <span>Added ({qtyInCart} in {m.cartLabel || 'Cart'})</span>
+                      </>
+                    ) : (
+                      <>
+                        <ShoppingBag className="w-3.5 h-3.5" />
+                        <span>
+                          {m.addToCartText || 'Add To Cart'} - Ksh {item.price.toLocaleString()}
+                          {qtyInCart > 0 ? ` (${qtyInCart})` : ''}
+                        </span>
+                      </>
+                    )}
+                  </button>
+                );
+              })()}
 
               {isAdmin && (
                 <div className="flex items-center gap-2 pt-1">
@@ -320,8 +371,8 @@ export default function MerchandiseTab({
       {selectedItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md">
           <div className="relative w-full max-w-xl bg-white border border-pink-200 rounded-3xl overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="relative h-64 bg-slate-100">
-              <img src={selectedItem.image} alt={selectedItem.name} className="w-full h-full object-cover" />
+            <div className="relative bg-slate-50 flex items-center justify-center">
+              <img src={selectedItem.image} alt={selectedItem.name} className="w-full h-auto block" />
               <button
                 onClick={() => setSelectedItem(null)}
                 className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white text-slate-800 flex items-center justify-center hover:bg-slate-100 shadow-md"
@@ -377,7 +428,7 @@ export default function MerchandiseTab({
                       key={idx}
                       src={pUrl}
                       alt={`${selectedItem.name} ${idx + 1}`}
-                      className="w-full h-24 object-cover rounded-xl border border-pink-100"
+                      className="w-full h-auto object-contain rounded-xl border border-pink-100 bg-slate-50"
                     />
                   ))}
                 </div>
@@ -656,6 +707,55 @@ export default function MerchandiseTab({
                 </button>
               </form>
             )}
+          </div>
+        </div>
+      )}
+      {/* Floating Add-To-Cart Confirmation Toast */}
+      {lastAddedItem && !checkoutModal && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 sm:max-w-md z-40 bg-slate-900 text-white border border-pink-400/60 rounded-2xl p-3.5 shadow-2xl flex items-center justify-between gap-3"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <img
+              src={lastAddedItem.image}
+              alt={lastAddedItem.name}
+              className="w-11 h-11 rounded-xl object-cover border border-pink-400/40 shrink-0"
+            />
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 text-[11px] font-black uppercase text-yellow-300">
+                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                <span>Added to {m.cartLabel || 'Cart'}</span>
+              </div>
+              <div className="text-sm font-bold text-white truncate">{lastAddedItem.name}</div>
+              <div className="text-[11px] text-slate-300 tabular-nums">
+                Ksh {lastAddedItem.price.toLocaleString()} • {cart.length} item{cart.length === 1 ? '' : 's'} (Ksh{' '}
+                {cartTotal.toLocaleString()})
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                setLastAddedItem(null);
+                setCheckoutSuccess(false);
+                setCheckoutModal(true);
+              }}
+              className="px-3 py-2 rounded-xl bg-gradient-to-r from-pink-600 to-purple-700 text-white font-black text-xs hover:from-pink-500 hover:to-purple-600 shadow-md whitespace-nowrap"
+            >
+              View {m.cartLabel || 'Cart'}
+            </button>
+            <button
+              type="button"
+              aria-label="Dismiss notification"
+              onClick={() => setLastAddedItem(null)}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         </div>
       )}

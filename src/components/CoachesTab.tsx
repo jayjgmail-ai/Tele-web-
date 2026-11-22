@@ -152,7 +152,7 @@ export default function CoachesTab({
         extraDetails: cleanExtraDetails,
         extraPhotos: cleanExtraPhotos,
       };
-      setCoaches([newCoach, ...coaches]);
+      setCoaches([...coaches, newCoach]);
     }
     setShowFormModal(false);
   };
@@ -185,15 +185,21 @@ export default function CoachesTab({
 
       {/* Header */}
       <div className="text-center max-w-3xl mx-auto space-y-4">
-        <span className="px-3.5 py-1.5 rounded-full bg-pink-100 border border-pink-300 text-pink-900 font-bold text-xs uppercase tracking-wider">
-          {c.badge}
-        </span>
-        <h1 className="text-3xl sm:text-5xl font-black text-slate-900 uppercase tracking-tight">
-          <RichTextRenderer text={c.heading} inline />
-        </h1>
-        <div className="text-slate-600 text-base sm:text-lg">
-          <RichTextRenderer text={c.subheading} />
-        </div>
+        {c.badge?.trim() && (
+          <span className="inline-block px-3.5 py-1.5 rounded-full bg-pink-100 border border-pink-300 text-pink-900 font-bold text-xs uppercase tracking-wider">
+            {c.badge}
+          </span>
+        )}
+        {c.heading?.trim() && (
+          <h1 className="text-3xl sm:text-5xl font-black text-slate-900 uppercase tracking-tight">
+            <RichTextRenderer text={c.heading} inline />
+          </h1>
+        )}
+        {c.subheading?.trim() && (
+          <div className="text-slate-600 text-base sm:text-lg">
+            <RichTextRenderer text={c.subheading} />
+          </div>
+        )}
       </div>
 
       {/* Coaches Grid */}
@@ -204,11 +210,11 @@ export default function CoachesTab({
             className="rounded-2xl bg-white border border-pink-100 overflow-hidden hover:border-pink-500 transition-all duration-300 flex flex-col justify-between group shadow-lg shadow-pink-50"
           >
             <div>
-              <div className="relative h-64 overflow-hidden bg-slate-100">
+              <div className="relative min-h-[8rem] overflow-hidden bg-slate-50 flex items-center justify-center">
                 <img
                   src={coach.image}
                   alt={coach.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  className="w-full h-auto block group-hover:scale-105 transition-transform duration-500"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-transparent"></div>
                 <div className="absolute top-4 left-4 px-3 py-1 rounded-lg bg-white/95 backdrop-blur-md text-xs font-extrabold text-pink-700 border border-pink-200 uppercase shadow-xs">
@@ -313,7 +319,7 @@ export default function CoachesTab({
                   <img
                     src={selectedCoach.image}
                     alt={selectedCoach.name}
-                    className="w-14 h-14 rounded-lg object-cover"
+                    className="w-16 h-auto max-h-20 rounded-lg object-contain bg-white border border-pink-100 shrink-0"
                   />
                   <div>
                     <div className="text-sm font-bold text-slate-900">{selectedCoach.name}</div>
@@ -356,7 +362,7 @@ export default function CoachesTab({
                         key={idx}
                         src={pUrl}
                         alt={`${selectedCoach.name} ${idx + 1}`}
-                        className="w-full h-20 object-cover rounded-xl border border-pink-100"
+                        className="w-full h-auto object-contain rounded-xl border border-pink-100 bg-slate-50"
                       />
                     ))}
                   </div>

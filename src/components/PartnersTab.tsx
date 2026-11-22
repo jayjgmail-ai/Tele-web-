@@ -207,15 +207,21 @@ export default function PartnersTab({
       {/* Header & Admin Controls */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <span className="px-3.5 py-1.5 rounded-full bg-pink-100 border border-pink-300 text-pink-900 font-bold text-xs uppercase tracking-wider">
-            {p.badge}
-          </span>
-          <h1 className="text-3xl sm:text-5xl font-black text-slate-900 uppercase tracking-tight mt-2">
-            <RichTextRenderer text={p.heading} inline />
-          </h1>
-          <div className="text-slate-600 text-sm sm:text-base mt-1 max-w-3xl">
-            <RichTextRenderer text={p.subheading} />
-          </div>
+          {p.badge?.trim() && (
+            <span className="inline-block px-3.5 py-1.5 rounded-full bg-pink-100 border border-pink-300 text-pink-900 font-bold text-xs uppercase tracking-wider mb-2">
+              {p.badge}
+            </span>
+          )}
+          {p.heading?.trim() && (
+            <h1 className="text-3xl sm:text-5xl font-black text-slate-900 uppercase tracking-tight">
+              <RichTextRenderer text={p.heading} inline />
+            </h1>
+          )}
+          {p.subheading?.trim() && (
+            <div className="text-slate-600 text-sm sm:text-base mt-1 max-w-3xl">
+              <RichTextRenderer text={p.subheading} />
+            </div>
+          )}
         </div>
 
         {isAdmin && (
@@ -311,11 +317,11 @@ export default function PartnersTab({
                 className="rounded-2xl bg-white border border-pink-100 overflow-hidden hover:border-pink-500 transition-all duration-300 flex flex-col justify-between group shadow-lg shadow-pink-50"
               >
                 <div>
-                  <div className="relative h-44 overflow-hidden bg-slate-100">
+                  <div className="relative min-h-[11rem] overflow-hidden bg-slate-900 flex items-center justify-center">
                     <img
                       src={partner.logoOrImage}
                       alt={partner.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      className="w-full h-auto block group-hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950/65 via-transparent to-transparent"></div>
                     <div className="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-white/95 backdrop-blur-md text-[11px] font-extrabold text-pink-700 border border-pink-200 uppercase flex items-center gap-1.5 shadow-xs">
@@ -405,11 +411,11 @@ export default function PartnersTab({
       {selectedPartner && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md">
           <div className="relative w-full max-w-xl bg-white border border-pink-200 rounded-3xl overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="relative h-52 bg-slate-100">
+            <div className="relative min-h-[12rem] bg-slate-900 flex items-center justify-center">
               <img
                 src={selectedPartner.logoOrImage}
                 alt={selectedPartner.name}
-                className="w-full h-full object-cover"
+                className="w-full h-auto block"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent"></div>
               <button
@@ -490,7 +496,7 @@ export default function PartnersTab({
                       key={idx}
                       src={photoUrl}
                       alt={`${selectedPartner.name} photo ${idx + 1}`}
-                      className="w-full h-24 object-cover rounded-xl border border-pink-100"
+                      className="w-full h-auto object-contain rounded-xl border border-pink-100 bg-slate-50"
                     />
                   ))}
                 </div>

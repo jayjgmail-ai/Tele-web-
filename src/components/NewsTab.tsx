@@ -142,15 +142,21 @@ export default function NewsTab({
 
       {/* Header */}
       <div className="text-center max-w-3xl mx-auto space-y-4">
-        <span className="px-3.5 py-1.5 rounded-full bg-pink-100 border border-pink-300 text-pink-900 font-bold text-xs uppercase tracking-wider">
-          {n.badge}
-        </span>
-        <h1 className="text-3xl sm:text-5xl font-black text-slate-900 uppercase tracking-tight">
-          <RichTextRenderer text={n.heading} inline />
-        </h1>
-        <div className="text-slate-600 text-base sm:text-lg">
-          <RichTextRenderer text={n.subheading} />
-        </div>
+        {n.badge?.trim() && (
+          <span className="inline-block px-3.5 py-1.5 rounded-full bg-pink-100 border border-pink-300 text-pink-900 font-bold text-xs uppercase tracking-wider">
+            {n.badge}
+          </span>
+        )}
+        {n.heading?.trim() && (
+          <h1 className="text-3xl sm:text-5xl font-black text-slate-900 uppercase tracking-tight">
+            <RichTextRenderer text={n.heading} inline />
+          </h1>
+        )}
+        {n.subheading?.trim() && (
+          <div className="text-slate-600 text-base sm:text-lg">
+            <RichTextRenderer text={n.subheading} />
+          </div>
+        )}
       </div>
 
       {/* News Grid */}
@@ -161,11 +167,11 @@ export default function NewsTab({
             className="rounded-2xl bg-white border border-pink-100 overflow-hidden hover:border-pink-500 transition-all duration-300 flex flex-col justify-between group shadow-lg shadow-pink-50"
           >
             <div>
-              <div className="relative h-52 overflow-hidden bg-slate-100">
+              <div className="relative min-h-[8rem] overflow-hidden bg-slate-50 flex items-center justify-center">
                 <img
                   src={article.image}
                   alt={article.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  className="w-full h-auto block group-hover:scale-105 transition-transform duration-500"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/40 via-transparent to-transparent"></div>
                 <div className="absolute top-4 left-4 px-3 py-1 rounded-lg bg-white/95 backdrop-blur-md text-xs font-extrabold text-pink-700 border border-pink-200 uppercase shadow-xs">
@@ -227,11 +233,11 @@ export default function NewsTab({
       {selectedArticle && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md">
           <div className="relative w-full max-w-2xl bg-white border border-pink-200 rounded-3xl overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="relative h-64 bg-slate-100">
+            <div className="relative min-h-[12rem] bg-slate-900 flex items-center justify-center">
               <img
                 src={selectedArticle.image}
                 alt={selectedArticle.title}
-                className="w-full h-full object-cover"
+                className="w-full h-auto block"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent"></div>
               <button
@@ -282,7 +288,7 @@ export default function NewsTab({
                       key={idx}
                       src={pUrl}
                       alt={`${selectedArticle.title} photo ${idx + 1}`}
-                      className="w-full h-28 object-cover rounded-xl border border-pink-100"
+                      className="w-full h-auto object-contain rounded-xl border border-pink-100 bg-slate-50"
                     />
                   ))}
                 </div>

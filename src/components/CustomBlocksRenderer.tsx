@@ -92,7 +92,7 @@ export default function CustomBlocksRenderer({
               <img
                 src={block.imageUrl}
                 alt={block.imageCaption || block.title || 'Page highlight'}
-                className="w-full max-h-[520px] object-cover"
+                className="w-full h-auto block"
               />
               {(block.title || block.imageCaption) && (
                 <div className={`p-5 flex flex-col gap-1 ${alignClass}`}>
@@ -141,7 +141,7 @@ export default function CustomBlocksRenderer({
               <div className={`flex flex-col gap-3 ${alignClass}`}>
                 <div className="flex items-center gap-2">
                   <Quote className="w-5 h-5 shrink-0" style={{ color: accent }} />
-                  {block.badge && (
+                  {block.badge?.trim() && (
                     <span
                       className="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider text-white"
                       style={{ backgroundColor: accent }}
@@ -150,12 +150,12 @@ export default function CustomBlocksRenderer({
                     </span>
                   )}
                 </div>
-                {block.title && (
+                {block.title?.trim() && (
                   <h3 className="text-xl sm:text-2xl font-black tracking-tight" style={headingStyle}>
                     <RichTextRenderer text={block.title} inline />
                   </h3>
                 )}
-                {block.body && (
+                {block.body?.trim() && (
                   <div className={`leading-relaxed ${sizeClass}`}>
                     <RichTextRenderer text={block.body} />
                   </div>
@@ -174,7 +174,7 @@ export default function CustomBlocksRenderer({
               style={cardStyle}
             >
               <div className={`flex flex-col gap-4 ${alignClass}`}>
-                {block.badge && (
+                {block.badge?.trim() && (
                   <span
                     className="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider text-white"
                     style={{ backgroundColor: accent }}
@@ -182,12 +182,12 @@ export default function CustomBlocksRenderer({
                     {block.badge}
                   </span>
                 )}
-                {block.title && (
+                {block.title?.trim() && (
                   <h3 className="text-2xl font-black tracking-tight" style={headingStyle}>
                     <RichTextRenderer text={block.title} inline />
                   </h3>
                 )}
-                {block.body && (
+                {block.body?.trim() && (
                   <div className={`text-slate-600 ${sizeClass}`} style={{ color: block.textColor || undefined }}>
                     <RichTextRenderer text={block.body} />
                   </div>
@@ -228,9 +228,9 @@ export default function CustomBlocksRenderer({
           const cards = block.cards || [];
           return (
             <div key={block.id} className="space-y-6" style={cardStyle}>
-              {(block.badge || block.title || block.body) && (
+              {(block.badge?.trim() || block.title?.trim() || block.body?.trim()) && (
                 <div className={`flex flex-col gap-2 ${alignClass}`}>
-                  {block.badge && (
+                  {block.badge?.trim() && (
                     <span
                       className="px-3.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider text-white"
                       style={{ backgroundColor: accent }}
@@ -238,12 +238,12 @@ export default function CustomBlocksRenderer({
                       {block.badge}
                     </span>
                   )}
-                  {block.title && (
+                  {block.title?.trim() && (
                     <h3 className="text-2xl sm:text-3xl font-black tracking-tight" style={headingStyle}>
                       <RichTextRenderer text={block.title} inline />
                     </h3>
                   )}
-                  {block.body && (
+                  {block.body?.trim() && (
                     <div className={`text-slate-600 max-w-3xl ${sizeClass}`} style={{ color: block.textColor || undefined }}>
                       <RichTextRenderer text={block.body} />
                     </div>
@@ -262,11 +262,11 @@ export default function CustomBlocksRenderer({
                       <img
                         src={card.imageUrl}
                         alt={card.title}
-                        className="w-full h-44 object-cover"
+                        className="w-full h-auto block bg-slate-50"
                       />
                     )}
                     <div className="p-5 space-y-2 flex-1">
-                      {card.badge && (
+                      {card.badge?.trim() && (
                         <span
                           className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase text-white"
                           style={{ backgroundColor: accent }}
@@ -298,7 +298,7 @@ export default function CustomBlocksRenderer({
               style={cardStyle}
             >
               <div className={`flex flex-col gap-4 ${alignClass}`}>
-                {block.badge && (
+                {block.badge?.trim() && (
                   <span
                     className="px-3.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider text-white"
                     style={{ backgroundColor: accent }}
@@ -306,12 +306,12 @@ export default function CustomBlocksRenderer({
                     {block.badge}
                   </span>
                 )}
-                {block.title && (
+                {block.title?.trim() && (
                   <h3 className="text-2xl sm:text-3xl font-black tracking-tight" style={headingStyle}>
                     <RichTextRenderer text={block.title} inline />
                   </h3>
                 )}
-                {block.body && (
+                {block.body?.trim() && (
                   <div className={`text-slate-600 max-w-2xl ${sizeClass}`} style={{ color: block.textColor || undefined }}>
                     <RichTextRenderer text={block.body} />
                   </div>
@@ -372,7 +372,7 @@ export default function CustomBlocksRenderer({
                 <img
                   src={block.imageUrl}
                   alt={block.title || 'Topic image'}
-                  className="w-full max-h-96 object-cover"
+                  className="w-full h-auto block"
                 />
               </div>
             )}
@@ -385,17 +385,17 @@ export default function CustomBlocksRenderer({
               }
             >
               {isSideLayout && imgPos === 'left' && block.imageUrl && (
-                <div className="rounded-2xl overflow-hidden border border-pink-100">
+                <div className="rounded-2xl overflow-hidden border border-pink-100 bg-slate-50">
                   <img
                     src={block.imageUrl}
                     alt={block.title || 'Topic image'}
-                    className="w-full h-64 sm:h-72 object-cover"
+                    className="w-full h-auto block"
                   />
                 </div>
               )}
 
               <div className={`flex flex-col gap-3 ${alignClass}`}>
-                {block.badge && (
+                {block.badge?.trim() && (
                   <span
                     className="px-3.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider text-white"
                     style={{ backgroundColor: accent }}
@@ -403,12 +403,12 @@ export default function CustomBlocksRenderer({
                     {block.badge}
                   </span>
                 )}
-                {block.title && (
+                {block.title?.trim() && (
                   <h3 className="text-2xl sm:text-3xl font-black tracking-tight" style={headingStyle}>
                     <RichTextRenderer text={block.title} inline />
                   </h3>
                 )}
-                {block.body && (
+                {block.body?.trim() && (
                   <div className={`leading-relaxed ${sizeClass} w-full`}>
                     <RichTextRenderer text={block.body} />
                   </div>
@@ -416,11 +416,11 @@ export default function CustomBlocksRenderer({
               </div>
 
               {isSideLayout && imgPos === 'right' && block.imageUrl && (
-                <div className="rounded-2xl overflow-hidden border border-pink-100">
+                <div className="rounded-2xl overflow-hidden border border-pink-100 bg-slate-50">
                   <img
                     src={block.imageUrl}
                     alt={block.title || 'Topic image'}
-                    className="w-full h-64 sm:h-72 object-cover"
+                    className="w-full h-auto block"
                   />
                 </div>
               )}

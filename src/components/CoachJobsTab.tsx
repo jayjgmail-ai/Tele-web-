@@ -141,15 +141,21 @@ export default function CoachJobsTab({
       <div className="rounded-3xl bg-pink-50/50 p-8 sm:p-12 border border-pink-200 relative overflow-hidden shadow-xl">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-4 max-w-2xl">
-            <span className="px-3.5 py-1.5 rounded-md bg-pink-600 text-white font-black text-xs uppercase tracking-wider shadow-xs">
-              {cj.badge}
-            </span>
-            <h1 className="text-3xl sm:text-5xl font-black text-slate-900 uppercase tracking-tight">
-              <RichTextRenderer text={cj.heading} inline />
-            </h1>
-            <div className="text-slate-600 text-base leading-relaxed">
-              <RichTextRenderer text={cj.subheading} />
-            </div>
+            {cj.badge?.trim() && (
+              <span className="inline-block px-3.5 py-1.5 rounded-md bg-pink-600 text-white font-black text-xs uppercase tracking-wider shadow-xs">
+                {cj.badge}
+              </span>
+            )}
+            {cj.heading?.trim() && (
+              <h1 className="text-3xl sm:text-5xl font-black text-slate-900 uppercase tracking-tight">
+                <RichTextRenderer text={cj.heading} inline />
+              </h1>
+            )}
+            {cj.subheading?.trim() && (
+              <div className="text-slate-600 text-base leading-relaxed">
+                <RichTextRenderer text={cj.subheading} />
+              </div>
+            )}
           </div>
 
           <button

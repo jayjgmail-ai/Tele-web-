@@ -65,15 +65,21 @@ export default function ContactTab({ siteContent, isAdmin, onOpenCms, onAddNotif
 
       {/* Header */}
       <div className="text-center max-w-3xl mx-auto space-y-4">
-        <span className="px-3.5 py-1.5 rounded-full bg-pink-100 border border-pink-300 text-pink-900 font-bold text-xs uppercase tracking-wider">
-          {c.badge}
-        </span>
-        <h1 className="text-3xl sm:text-5xl font-black text-slate-900 uppercase tracking-tight">
-          <RichTextRenderer text={c.heading} inline />
-        </h1>
-        <div className="text-slate-600 text-base sm:text-lg">
-          <RichTextRenderer text={c.subheading} />
-        </div>
+        {c.badge?.trim() && (
+          <span className="inline-block px-3.5 py-1.5 rounded-full bg-pink-100 border border-pink-300 text-pink-900 font-bold text-xs uppercase tracking-wider">
+            {c.badge}
+          </span>
+        )}
+        {c.heading?.trim() && (
+          <h1 className="text-3xl sm:text-5xl font-black text-slate-900 uppercase tracking-tight">
+            <RichTextRenderer text={c.heading} inline />
+          </h1>
+        )}
+        {c.subheading?.trim() && (
+          <div className="text-slate-600 text-base sm:text-lg">
+            <RichTextRenderer text={c.subheading} />
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">

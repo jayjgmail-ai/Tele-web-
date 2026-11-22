@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ParentSportRequest, SportType, NotificationCategory } from '../types';
 import { SiteContent } from '../data/siteContent';
-import { Users, CheckCircle2, Plus, X, Edit3 } from 'lucide-react';
+import { Users, CheckCircle2, Plus, X, Edit3, Check } from 'lucide-react';
 import RichTextRenderer from './RichTextRenderer';
 
 interface ParentRequestsTabProps {
@@ -46,14 +46,43 @@ export default function ParentRequestsTab({
   const [phone, setPhone] = useState('');
   const [kidName, setKidName] = useState('');
   const [kidAge, setKidAge] = useState(12);
-  const [sport, setSport] = useState<SportType>(sportsList[0] || 'Football');
+  const [selectedSports, setSelectedSports] = useState<SportType[]>(
+    sportsList[0] ? [sportsList[0]] : ['Football']
+  );
+  const [customSportInput, setCustomSportInput] = useState('');
+  const [sportError, setSportError] = useState(false);
   const [skillLevel, setSkillLevel] = useState<string>(skillLevels[1] || skillLevels[0] || 'Intermediate');
   const [trainingGoals, setTrainingGoals] = useState('');
   const [extraAnswers, setExtraAnswers] = useState<Record<string, string>>({});
 
+  const availableSports = Array.from(new Set([...sportsList, ...selectedSports]));
+
+  const toggleSport = (sp: SportType) => {
+    setSportError(false);
+    setSelectedSports((prev) =>
+      prev.includes(sp) ? prev.filter((item) => item !== sp) : [...prev, sp]
+    );
+  };
+
+  const handleAddCustomSport = () => {
+    const trimmed = customSportInput.trim();
+    if (!trimmed) return;
+    setSportError(false);
+    if (!selectedSports.includes(trimmed)) {
+      setSelectedSports((prev) => [...prev, trimmed]);
+    }
+    setCustomSportInput('');
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!parentName.trim() || !kidName.trim()) return;
+    if (selectedSports.length === 0) {
+      setSportError(true);
+      return;
+    }
+
+    const sportSummary = selectedSports.join(', ');
 
     const mappedExtras = extraQuestions
       .map((q) => ({ label: q, value: (extraAnswers[q] || '').trim() }))
@@ -66,7 +95,7 @@ export default function ParentRequestsTab({
       phone,
       kidName,
       kidAge: Number(kidAge),
-      sport,
+      sport: sportSummary,
       skillLevel,
       trainingGoals,
       requestDate: new Date().toISOString().split('T')[0],
@@ -80,7 +109,7 @@ export default function ParentRequestsTab({
     onAddNotification(
       'requests',
       `Parent Sport Request: ${kidName} (Age ${kidAge})`,
-      `${sport} • ${skillLevel} (Parent: ${parentName})`,
+      `${sportSummary} • ${skillLevel} (Parent: ${parentName})`,
       `Goals: ${trainingGoals} | Contact: ${parentEmail}${extraSummary ? ` | ${extraSummary}` : ''}`,
       'parent-requests'
     );
@@ -92,6 +121,9 @@ export default function ParentRequestsTab({
       setParentEmail('');
       setPhone('');
       setKidName('');
+      setSelectedSports(sportsList[0] ? [sportsList[0]] : ['Football']);
+      setCustomSportInput('');
+      setSportError(false);
       setTrainingGoals('');
       setExtraAnswers({});
     }, 2000);
@@ -115,15 +147,21 @@ export default function ParentRequestsTab({
       <div className="rounded-3xl bg-pink-50/50 p-8 sm:p-12 border border-pink-200 relative overflow-hidden shadow-xl">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-4 max-w-2xl">
-            <span className="px-3.5 py-1.5 rounded-md bg-pink-600 text-white font-black text-xs uppercase tracking-wider shadow-xs">
-              {pr.badge}
-            </span>
-            <h1 className="text-3xl sm:text-5xl font-black text-slate-900 uppercase tracking-tight">
-              <RichTextRenderer text={pr.heading} inline />
-            </h1>
-            <div className="text-slate-600 text-base leading-relaxed">
-              <RichTextRenderer text={pr.subheading} />
-            </div>
+            {pr.badge?.trim() && (
+              <span className="inline-block px-3.5 py-1.5 rounded-md bg-pink-600 text-white font-black text-xs uppercase tracking-wider shadow-xs">
+                {pr.badge}
+              </span>
+            )}
+            {pr.heading?.trim() && (
+              <h1 className="text-3xl sm:text-5xl font-black text-slate-900 uppercase tracking-tight">
+                <RichTextRenderer text={pr.heading} inline />
+              </h1>
+            )}
+            {pr.subheading?.trim() && (
+              <div className="text-slate-600 text-base leading-relaxed">
+                <RichTextRenderer text={pr.subheading} />
+              </div>
+            )}
           </div>
 
           <button
@@ -234,36 +272,90 @@ export default function ParentRequestsTab({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Requested Sport *</label>
-                    <select
-                      value={sport}
-                      onChange={(e) => setSport(e.target.value as SportType)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-pink-600 shadow-xs"
-                    >
-                      {sportsList.map((sp) => (
-                        <option key={sp} value={sp}>
-                          {sp}
-                        </option>
-                      ))}
-                    </select>
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold text-slate-700 uppercase">
+                      Requested Sport * (Select all that apply)
+                    </label>
+                    <span className="text-[11px] font-bold text-pink-600">
+                      {selectedSports.length} selected
+                    </span>
                   </div>
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+                    <div className="flex flex-wrap gap-2">
+                      {availableSports.map((sp) => {
+                        const isSelected = selectedSports.includes(sp);
+                        return (
+                          <button
+                            key={sp}
+                            type="button"
+                            onClick={() => toggleSport(sp)}
+                            aria-pressed={isSelected}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all flex items-center gap-1.5 ${
+                              isSelected
+                                ? 'bg-pink-600 text-white border-pink-600 shadow-xs'
+                                : 'bg-white text-slate-700 border-slate-200 hover:border-pink-300'
+                            }`}
+                          >
+                            <span
+                              className={`w-3.5 h-3.5 rounded flex items-center justify-center border ${
+                                isSelected
+                                  ? 'bg-yellow-400 border-yellow-400 text-slate-950'
+                                  : 'border-slate-300 bg-slate-50'
+                              }`}
+                            >
+                              {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                            </span>
+                            <span>{sp}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Skill Level *</label>
-                    <select
-                      value={skillLevel}
-                      onChange={(e) => setSkillLevel(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-pink-600 shadow-xs"
-                    >
-                      {skillLevels.map((lv) => (
-                        <option key={lv} value={lv}>
-                          {lv}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="flex gap-2 pt-1">
+                      <input
+                        type="text"
+                        placeholder="Other sport (optional)..."
+                        value={customSportInput}
+                        onChange={(e) => setCustomSportInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddCustomSport();
+                          }
+                        }}
+                        className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-pink-600"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddCustomSport}
+                        className="px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-pink-100 text-slate-800 hover:text-pink-700 font-bold text-xs flex items-center gap-1 shrink-0"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Add
+                      </button>
+                    </div>
                   </div>
+                  {sportError && (
+                    <p className="text-xs font-semibold text-red-600 mt-1">
+                      Please select at least one sport.
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Skill Level *</label>
+                  <select
+                    value={skillLevel}
+                    onChange={(e) => setSkillLevel(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-pink-600 shadow-xs"
+                  >
+                    {skillLevels.map((lv) => (
+                      <option key={lv} value={lv}>
+                        {lv}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>

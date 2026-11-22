@@ -177,16 +177,22 @@ export default function AnnouncementsTab({
       {/* Header & Admin Controls */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <span className="px-3.5 py-1.5 rounded-full bg-pink-100 border border-pink-300 text-pink-900 font-bold text-xs uppercase tracking-wider inline-flex items-center gap-1.5">
-            <Megaphone className="w-3.5 h-3.5 text-pink-600" />
-            {a.badge}
-          </span>
-          <h1 className="text-3xl sm:text-5xl font-black text-slate-900 uppercase tracking-tight mt-2">
-            <RichTextRenderer text={a.heading} inline />
-          </h1>
-          <div className="text-slate-600 text-sm sm:text-base mt-1 max-w-3xl">
-            <RichTextRenderer text={a.subheading} />
-          </div>
+          {a.badge?.trim() && (
+            <span className="px-3.5 py-1.5 rounded-full bg-pink-100 border border-pink-300 text-pink-900 font-bold text-xs uppercase tracking-wider inline-flex items-center gap-1.5 mb-2">
+              <Megaphone className="w-3.5 h-3.5 text-pink-600" />
+              {a.badge}
+            </span>
+          )}
+          {a.heading?.trim() && (
+            <h1 className="text-3xl sm:text-5xl font-black text-slate-900 uppercase tracking-tight">
+              <RichTextRenderer text={a.heading} inline />
+            </h1>
+          )}
+          {a.subheading?.trim() && (
+            <div className="text-slate-600 text-sm sm:text-base mt-1 max-w-3xl">
+              <RichTextRenderer text={a.subheading} />
+            </div>
+          )}
         </div>
 
         {isAdmin && (
@@ -261,12 +267,12 @@ export default function AnnouncementsTab({
                 {ann.photo ? (
                   <div
                     onClick={() => setSelectedAnnouncement(ann)}
-                    className="relative h-56 overflow-hidden bg-slate-100 cursor-pointer"
+                    className="relative min-h-[9rem] overflow-hidden bg-slate-900 flex items-center justify-center cursor-pointer"
                   >
                     <img
                       src={ann.photo}
                       alt={ann.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      className="w-full h-auto block group-hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-transparent"></div>
                     <div className="absolute top-3 left-3 flex items-center gap-2">
@@ -367,7 +373,7 @@ export default function AnnouncementsTab({
                 <img
                   src={selectedAnnouncement.photo}
                   alt={selectedAnnouncement.title}
-                  className="w-full max-h-[420px] object-cover"
+                  className="w-full h-auto block"
                 />
                 <button
                   onClick={() => setSelectedAnnouncement(null)}
@@ -439,7 +445,7 @@ export default function AnnouncementsTab({
                       key={idx}
                       src={pUrl}
                       alt={`${selectedAnnouncement.title} photo ${idx + 1}`}
-                      className="w-full h-28 object-cover rounded-xl border border-pink-100"
+                      className="w-full h-auto object-contain rounded-xl border border-pink-100 bg-slate-50"
                     />
                   ))}
                 </div>

@@ -117,7 +117,7 @@ function parseInlineTokens(text: string, keyPrefix: string): React.ReactNode[] {
 }
 
 export default function RichTextRenderer({ text = '', inline = false, className = '' }: RichTextRendererProps) {
-  if (!text) return null;
+  if (!text || !text.trim()) return null;
 
   if (inline) {
     return <span className={className}>{parseInlineTokens(text, 'inline')}</span>;

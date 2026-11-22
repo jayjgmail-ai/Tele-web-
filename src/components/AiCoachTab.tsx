@@ -111,16 +111,22 @@ export default function AiCoachTab({
 
       {/* Header */}
       <div className="text-center max-w-2xl mx-auto space-y-3">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-pink-100 border border-pink-300 text-pink-900 font-bold text-xs uppercase tracking-wider">
-          <Sparkles className="w-3.5 h-3.5 text-pink-600" />
-          {ai.badge}
-        </div>
-        <h1 className="text-3xl sm:text-5xl font-black text-slate-900 uppercase tracking-tight">
-          <RichTextRenderer text={ai.heading} inline />
-        </h1>
-        <div className="text-slate-600 text-sm sm:text-base">
-          <RichTextRenderer text={ai.subheading} />
-        </div>
+        {ai.badge?.trim() && (
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-pink-100 border border-pink-300 text-pink-900 font-bold text-xs uppercase tracking-wider">
+            <Sparkles className="w-3.5 h-3.5 text-pink-600" />
+            {ai.badge}
+          </div>
+        )}
+        {ai.heading?.trim() && (
+          <h1 className="text-3xl sm:text-5xl font-black text-slate-900 uppercase tracking-tight">
+            <RichTextRenderer text={ai.heading} inline />
+          </h1>
+        )}
+        {ai.subheading?.trim() && (
+          <div className="text-slate-600 text-sm sm:text-base">
+            <RichTextRenderer text={ai.subheading} />
+          </div>
+        )}
       </div>
 
       {/* Controls / Partner Context */}
