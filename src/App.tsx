@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import HomeTab from './components/HomeTab';
@@ -221,8 +221,32 @@ function buildInitialNotifications(): AdminNotification[] {
   return [...reqNotifs, ...appNotifs];
 }
 
+const VALID_TABS = new Set([
+  'home',
+  'programs',
+  'partners',
+  'coaches',
+  'coach-jobs',
+  'parent-requests',
+  'merchandise',
+  'announcements',
+  'aicoach',
+  'news',
+  'contact',
+]);
+
+function getTabFromHash(): string {
+  try {
+    const hash = window.location.hash.replace(/^#\/?/, '').trim();
+    return hash && VALID_TABS.has(hash) ? hash : 'home';
+  } catch {
+    return 'home';
+  }
+}
+
 export default function App() {
-  const [currentTab, setCurrentTab] = useState<string>('home');
+  const [currentTab, setCurrentTab] = useState<string>(getTabFromHash);
+  const currentTabRef = useRef<string>(currentTab);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [showAdminModal, setShowAdminModal] = useState<boolean>(false);
   const [showCmsModal, setShowCmsModal] = useState<boolean>(false);
@@ -313,9 +337,58 @@ export default function App() {
     } catch {}
   }, [notifications]);
 
-  const handleOpenBooking = () => {
-    setCurrentTab('contact');
+  useEffect(() => {
+    currentTabRef.current = currentTab;
+  }, [currentTab]);
+
+  useEffect(() => {
+    try {
+      const initial = getTabFromHash();
+      if (!window.history.state || typeof window.history.state.tab !== 'string') {
+        window.history.replaceState({ tab: initial }, '', `#${initial}`);
+      }
+    } catch {}
+
+    const syncFromHistory = (stateTab?: string) => {
+      const nextTab = stateTab && VALID_TABS.has(stateTab) ? stateTab : getTabFromHash();
+      if (nextTab !== currentTabRef.current) {
+        currentTabRef.current = nextTab;
+        setCurrentTab(nextTab);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    };
+
+    const handlePopState = (event: PopStateEvent) => {
+      const stateTab =
+        event.state && typeof event.state.tab === 'string' ? event.state.tab : undefined;
+      syncFromHistory(stateTab);
+    };
+
+    const handleHashChange = () => {
+      syncFromHistory();
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('hashchange', handleHashChange);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('hashchange', handleHashChange);
+    };
+  }, []);
+
+  const navigateToTab = useCallback((tab: string) => {
+    if (!tab) return;
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (currentTabRef.current === tab) return;
+    currentTabRef.current = tab;
+    setCurrentTab(tab);
+    try {
+      window.history.pushState({ tab }, '', `#${tab}`);
+    } catch {}
+  }, []);
+
+  const handleOpenBooking = () => {
+    navigateToTab('contact');
   };
 
   const handleAddNotification = (
@@ -413,10 +486,7 @@ export default function App() {
       {/* Sticky Navigation */}
       <Navbar
         currentTab={currentTab}
-        setCurrentTab={(tab) => {
-          setCurrentTab(tab);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }}
+        setCurrentTab={navigateToTab}
         onOpenBooking={handleOpenBooking}
         onOpenAdminModal={() => setShowAdminModal(true)}
         siteContent={siteContent}
@@ -445,10 +515,7 @@ export default function App() {
         <CustomBlocksRenderer
           blocks={siteContent.pageBlocks?.[currentTab]}
           position="top"
-          onNavigateTab={(tab) => {
-            setCurrentTab(tab);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
+          onNavigateTab={navigateToTab}
           isAdmin={isAdmin}
           onOpenCms={() => setShowCmsModal(true)}
         />
@@ -456,10 +523,7 @@ export default function App() {
         {currentTab === 'home' && (
           <HomeTab
             siteContent={siteContent}
-            setCurrentTab={(tab) => {
-              setCurrentTab(tab);
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
+            setCurrentTab={navigateToTab}
             onOpenBooking={handleOpenBooking}
             isAdmin={isAdmin}
             onOpenCms={() => setShowCmsModal(true)}
@@ -562,10 +626,7 @@ export default function App() {
         <CustomBlocksRenderer
           blocks={siteContent.pageBlocks?.[currentTab]}
           position="bottom"
-          onNavigateTab={(tab) => {
-            setCurrentTab(tab);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
+          onNavigateTab={navigateToTab}
           isAdmin={isAdmin}
           onOpenCms={() => setShowCmsModal(true)}
         />
@@ -574,10 +635,7 @@ export default function App() {
       {/* Professional Footer */}
       <Footer
         siteContent={siteContent}
-        setCurrentTab={(tab) => {
-          setCurrentTab(tab);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }}
+        setCurrentTab={navigateToTab}
       />
 
       {/* Admin Content Manager Modal */}
@@ -604,10 +662,7 @@ export default function App() {
           onDeleteNotification={(id) =>
             setNotifications((prev) => prev.filter((n) => n.id !== id))
           }
-          onNavigateTab={(tab) => {
-            setCurrentTab(tab);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
+          onNavigateTab={navigateToTab}
         />
       )}
 
