@@ -195,31 +195,6 @@ function loadStoredSiteContent(): SiteContent {
   }
 }
 
-function buildInitialNotifications(): AdminNotification[] {
-  const appNotifs: AdminNotification[] = initialCoachApplications.map((app) => ({
-    id: `notif-${app.id}`,
-    category: 'applications',
-    title: `Coach Application: ${app.fullName}`,
-    subtitle: `${app.sport} Specialist • ${app.experienceYears} Years Experience (${app.status})`,
-    details: `Email: ${app.email} | Certifications: ${app.certifications}`,
-    timestamp: app.appliedDate,
-    read: false,
-    targetTab: 'coach-jobs',
-  }));
-
-  const reqNotifs: AdminNotification[] = initialParentRequests.map((req) => ({
-    id: `notif-${req.id}`,
-    category: 'requests',
-    title: `Parent Sport Request: ${req.kidName} (Age ${req.kidAge})`,
-    subtitle: `${req.sport} • ${req.skillLevel} (Parent: ${req.parentName})`,
-    details: `Goals: ${req.trainingGoals} | Contact: ${req.parentEmail}`,
-    timestamp: req.requestDate,
-    read: false,
-    targetTab: 'parent-requests',
-  }));
-
-  return [...reqNotifs, ...appNotifs];
-}
 
 const VALID_TABS = new Set([
   'home',
@@ -248,11 +223,14 @@ export default function App() {
   const [currentTab, setCurrentTab] = useState<string>(getTabFromHash);
   const currentTabRef = useRef<string>(currentTab);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const [adminToken, setAdminToken] = useState<string | null>(null);
+  const [isAuthenticating, setIsAuthenticating] = useState<boolean>(false);
   const [showAdminModal, setShowAdminModal] = useState<boolean>(false);
   const [showCmsModal, setShowCmsModal] = useState<boolean>(false);
   const [showNotificationsModal, setShowNotificationsModal] = useState<boolean>(false);
   const [adminPin, setAdminPin] = useState<string>('');
   const [pinError, setPinError] = useState<boolean>(false);
+  const [pinErrorMessage, setPinErrorMessage] = useState<string>('Incorrect PIN.');
 
   const [siteContent, setSiteContent] = useState<SiteContent>(loadStoredSiteContent);
   const [programs, setPrograms] = useState<Program[]>(() =>
@@ -273,9 +251,7 @@ export default function App() {
     loadStored('telesports_announcements_v1', initialAnnouncements)
   );
   const [news, setNews] = useState<NewsArticle[]>(() => loadStored('telesports_news', initialNews));
-  const [notifications, setNotifications] = useState<AdminNotification[]>(() =>
-    loadStored('telesports_notifications_v1', buildInitialNotifications())
-  );
+  const [notifications, setNotifications] = useState<AdminNotification[]>([]);
 
   useEffect(() => {
     try {
@@ -331,11 +307,6 @@ export default function App() {
     } catch {}
   }, [news]);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem('telesports_notifications_v1', JSON.stringify(notifications));
-    } catch {}
-  }, [notifications]);
 
   useEffect(() => {
     currentTabRef.current = currentTab;
@@ -391,44 +362,125 @@ export default function App() {
     navigateToTab('contact');
   };
 
-  const handleAddNotification = (
-    category: NotificationCategory,
-    title: string,
-    subtitle: string,
-    details: string,
-    targetTab: string,
-    amount?: string
-  ) => {
-    const newNotif: AdminNotification = {
-      id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      category,
-      title,
-      subtitle,
-      details,
-      timestamp: new Date().toLocaleString([], {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
-      read: false,
-      targetTab,
-      amount,
-    };
-    setNotifications((prev) => [newNotif, ...prev]);
-  };
+  const handleExitAdmin = useCallback(() => {
+    setIsAdmin(false);
+    setAdminToken(null);
+    setNotifications([]);
+    setShowNotificationsModal(false);
+    setShowCmsModal(false);
+    setShowAdminModal(false);
+  }, []);
 
-  const handleAdminLogin = (e: React.FormEvent) => {
+  const fetchServerNotifications = useCallback(
+    async (token: string) => {
+      try {
+        const res = await fetch('/api/notifications', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.status === 401) {
+          handleExitAdmin();
+          return;
+        }
+        if (!res.ok) return;
+        const data = await res.json();
+        if (Array.isArray(data?.notifications)) {
+          setNotifications(data.notifications);
+        }
+      } catch {
+        // Ignore transient network polling errors
+      }
+    },
+    [handleExitAdmin]
+  );
+
+  useEffect(() => {
+    if (!isAdmin || !adminToken) return;
+    void fetchServerNotifications(adminToken);
+    const interval = window.setInterval(() => {
+      void fetchServerNotifications(adminToken);
+    }, 8000);
+    return () => window.clearInterval(interval);
+  }, [isAdmin, adminToken, fetchServerNotifications]);
+
+  useEffect(() => {
+    if (isAdmin && adminToken && showNotificationsModal) {
+      void fetchServerNotifications(adminToken);
+    }
+  }, [isAdmin, adminToken, showNotificationsModal, fetchServerNotifications]);
+
+  const handleAddNotification = useCallback(
+    (
+      category: NotificationCategory,
+      title: string,
+      subtitle: string,
+      details: string,
+      targetTab: string,
+      amount?: string
+    ) => {
+      void (async () => {
+        try {
+          const res = await fetch('/api/notifications', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              category,
+              title,
+              subtitle,
+              details,
+              targetTab,
+              amount,
+            }),
+          });
+          if (!res.ok) return;
+          const data = await res.json();
+          if (data?.notification && isAdmin) {
+            const saved = data.notification as AdminNotification;
+            setNotifications((prev) =>
+              prev.some((n) => n.id === saved.id) ? prev : [saved, ...prev]
+            );
+          }
+        } catch {
+          // Ignore submission notification transport errors
+        }
+      })();
+    },
+    [isAdmin]
+  );
+
+  const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (adminPin === 'jlej2protocal') {
-      setIsAdmin(true);
-      setShowAdminModal(false);
-      setAdminPin('');
-      setPinError(false);
-      setShowNotificationsModal(true);
-    } else {
+    if (isAuthenticating) return;
+    setIsAuthenticating(true);
+    setPinError(false);
+
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: adminPin }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && typeof data?.token === 'string') {
+        setAdminToken(data.token);
+        setIsAdmin(true);
+        setShowAdminModal(false);
+        setAdminPin('');
+        setPinError(false);
+        setShowNotificationsModal(true);
+        await fetchServerNotifications(data.token);
+      } else {
+        setPinErrorMessage(
+          res.status === 429
+            ? 'Too many login attempts. Please wait a moment.'
+            : 'Incorrect PIN.'
+        );
+        setPinError(true);
+      }
+    } catch {
+      setPinErrorMessage('Unable to verify PIN right now. Please try again.');
       setPinError(true);
+    } finally {
+      setIsAuthenticating(false);
     }
   };
 
@@ -470,11 +522,7 @@ export default function App() {
               )}
             </button>
             <button
-              onClick={() => {
-                setIsAdmin(false);
-                setShowNotificationsModal(false);
-                setShowCmsModal(false);
-              }}
+              onClick={handleExitAdmin}
               className="underline hover:text-yellow-300 font-black ml-1"
             >
               Exit Admin
@@ -653,15 +701,45 @@ export default function App() {
           isOpen={showNotificationsModal}
           onClose={() => setShowNotificationsModal(false)}
           notifications={notifications}
-          onMarkRead={(id) =>
-            setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)))
-          }
-          onMarkAllRead={() =>
-            setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
-          }
-          onDeleteNotification={(id) =>
-            setNotifications((prev) => prev.filter((n) => n.id !== id))
-          }
+          onMarkRead={(id) => {
+            setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+            if (adminToken) {
+              void fetch(`/api/notifications/${encodeURIComponent(id)}/read`, {
+                method: 'PATCH',
+                headers: { Authorization: `Bearer ${adminToken}` },
+              })
+                .then((res) => {
+                  if (res.status === 401) handleExitAdmin();
+                })
+                .catch(() => {});
+            }
+          }}
+          onMarkAllRead={() => {
+            setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+            if (adminToken) {
+              void fetch('/api/notifications/mark-all-read', {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${adminToken}` },
+              })
+                .then((res) => {
+                  if (res.status === 401) handleExitAdmin();
+                })
+                .catch(() => {});
+            }
+          }}
+          onDeleteNotification={(id) => {
+            setNotifications((prev) => prev.filter((n) => n.id !== id));
+            if (adminToken) {
+              void fetch(`/api/notifications/${encodeURIComponent(id)}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${adminToken}` },
+              })
+                .then((res) => {
+                  if (res.status === 401) handleExitAdmin();
+                })
+                .catch(() => {});
+            }
+          }}
           onNavigateTab={navigateToTab}
         />
       )}
@@ -693,10 +771,7 @@ export default function App() {
                   <CheckCircle2 className="w-8 h-8" />
                 </div>
                 <button
-                  onClick={() => {
-                    setIsAdmin(false);
-                    setShowAdminModal(false);
-                  }}
+                  onClick={handleExitAdmin}
                   className="w-full py-3 rounded-xl bg-slate-100 text-slate-800 font-bold text-sm hover:bg-slate-200"
                 >
                   Log Out / Exit Admin Mode
@@ -718,7 +793,7 @@ export default function App() {
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:border-pink-600 shadow-xs"
                   />
                   {pinError && (
-                    <p className="text-xs text-red-600 font-semibold mt-1.5">Incorrect PIN.</p>
+                    <p className="text-xs text-red-600 font-semibold mt-1.5">{pinErrorMessage}</p>
                   )}
                 </div>
 
@@ -736,9 +811,10 @@ export default function App() {
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-pink-600 to-purple-700 text-white font-black text-sm shadow-lg hover:from-pink-500 hover:to-purple-600"
+                    disabled={isAuthenticating}
+                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-pink-600 to-purple-700 text-white font-black text-sm shadow-lg hover:from-pink-500 hover:to-purple-600 disabled:opacity-60"
                   >
-                    Authenticate Admin
+                    {isAuthenticating ? 'Verifying...' : 'Authenticate Admin'}
                   </button>
                 </div>
               </form>

@@ -42,8 +42,8 @@
 
 ## 3. Locked File Manifest
 
-- `server.ts` — Express server + Vite dev middleware + `POST /api/ai-coach` (`@google/genai` >= 2.32.0 using `gemini-4-hydrogen`)
-- `src/App.tsx` — Root state, Browser History API (`pushState`/`popstate`/`hashchange`) back/forward page navigation, `localStorage` persistence, Admin authentication, Admin banner, Categorized Notifications
+- `server.ts` — Express server + Vite dev middleware + `POST /api/ai-coach` (`@google/genai` >= 2.32.0 using `gemini-4-hydrogen`) + `POST /api/admin/login` & `/api/notifications*` persistent JSON notification store (`.telesports-data/notifications.json`)
+- `src/App.tsx` — Root state, Browser History API (`pushState`/`popstate`/`hashchange`) back/forward page navigation, `localStorage` CMS/data persistence, server-verified Admin authentication, Admin banner, server-synced Categorized Notifications
 - `src/types.ts` — Core TypeScript interfaces (`Partner`, `PartnerCategory`, `Coach`, `Program`, `Announcement`, `AnnouncementCategory`, `NewsArticle`, `CoachApplication`, `ParentSportRequest`, `MerchandiseItem`, `AdminNotification`)
 - `src/data/mockData.ts` — Initial academy data with `Ksh` pricing, partner schools/organizations, and announcements
 - `src/data/siteContent.ts` — Editable page-by-page copy, testimonials, `heroImage`, and default `logoUrl` (`/assets/aistudio/file_000000007aec821083703bd6c537a40b_2f531d18.png`)
